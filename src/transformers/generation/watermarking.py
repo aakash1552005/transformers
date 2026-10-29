@@ -26,19 +26,8 @@ from torch.nn import BCELoss
 from .. import initialization as init
 from ..configuration_utils import PreTrainedConfig
 from ..modeling_utils import PreTrainedModel
-from ..utils import ModelOutput, is_scipy_available, logging
+from ..utils import ModelOutput, logging
 from .logits_process import SynthIDTextWatermarkLogitsProcessor, WatermarkLogitsProcessor
-
-
-if is_scipy_available():
-    from scipy.special import erfc
-else:
-    from math import erfc as _erfc
-
-    def erfc(z):
-        if np.isscalar(z):
-            return math.erfc(float(z))
-        return np.vectorize(_erfc, otypes=[float])(z)
 
 
 if TYPE_CHECKING:
@@ -200,7 +189,9 @@ class WatermarkDetector:
 
     def _compute_pval(self, x, loc=0, scale=1):
         z = (x - loc) / scale
-        return 0.5 * erfc(z / np.sqrt(2))
+        if np.isscalar(z):
+            return 0.5 * math.erfc(float(z) / math.sqrt(2))
+        return 0.5 * np.vectorize(math.erfc)(z / np.sqrt(2))
 
     def __call__(
         self,
